@@ -51,13 +51,20 @@ def is_valid_title(title):
 
 def format_pull_requests(pull_requests, owner, repository):
     lines = []
+    creators = {}
 
     for pull in pull_requests:
         if is_valid_title(pull.title):
             creator = pull.user.login
-            line = '*[{0}/{1}]* <{2}|{3} - by {4}>'.format(
-                owner, repository, pull.html_url, pull.title, creator)
-            lines.append(line)
+            if creator not in creators:
+                creators[creator] = []
+            line = '*[{0}/{1}]* <{2}|{3}> '.format(
+                owner, repository, pull.html_url, pull.title)
+            creators[creator].append(line)
+
+    for creator in creators:
+        text = ">*AUTHOR* : *_%s_* :arrow_right: *Count : %s*\n"%(creator, str(len(creators[creator]))) + '\n'.join(creators[creator])
+        lines.append(text)
 
     return lines
 
