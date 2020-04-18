@@ -52,19 +52,50 @@ def is_valid_title(title):
 def format_pull_requests(pull_requests, owner, repository):
     lines = []
     creators = {}
+    approved_creators = {}
 
     for pull in pull_requests:
+        approval_details = { 'count': 0, 'reviewers': [] }
         if is_valid_title(pull.title):
             creator = pull.user.login
-            if creator not in creators:
-                creators[creator] = []
-            line = '*[{0}/{1}]* <{2}|{3}> '.format(
-                owner, repository, pull.html_url, pull.title)
-            creators[creator].append(line)
+            reviews = pull.reviews().__iter__()
+
+            for review in reviews:
+                if review.state == "APPROVED":
+                    approval_details['count'] += 1
+                    approval_details['reviewers'].append(review.user.login)
+
+                if approval_details['count'] == 2:
+                    approved_string = '*[{0}/{1}]* <{2}|{3}> : APPROVED BY {4} '.format(
+                        owner, repository, pull.html_url, pull.title, ','.join(approval_details['reviewers']))
+                    if creator in approved_creators:
+                        approved_creators[creator].append(approved_string)
+                    else:
+                        approved_creators[creator] = [ approved_string ]
+                    break
+
+            if approval_details['count'] < 2:
+                line = '*[{0}/{1}]* <{2}|{3}> '.format(
+                    owner, repository, pull.html_url, pull.title)
+                if creator in creators:
+                    creators[creator].append(line)
+                else:
+                    creators[creator] = [ line ]
 
     for creator in creators:
-        text = ">*AUTHOR* : *_%s_* :arrow_right: *Count : %s*\n"%(creator, str(len(creators[creator]))) + '\n'.join(creators[creator])
-        lines.append(text)
+        creator_text = ">*AUTHOR* : *_%s_* :arrow_right: *Count : %s*\n"%(
+            creator, str(len(creators[creator]))) + '\n'.join(creators[creator])
+        lines.append(creator_text)
+
+    heading = "\n*#############################################################################################*"
+    heading += "\n*############################ APPROVED PULL REQUESTS #########################################*"
+    heading += "\n*#############################################################################################*\n"
+    lines.append(heading)
+
+    for creator in approved_creators:
+        approved_text = ">*AUTHOR* : *_%s_* :arrow_right: *Count : %s*\n"%(
+                    creator, str(len(approved_creators[creator]))) + '\n'.join(approved_creators[creator])
+        lines.append(approved_text)
 
     return lines
 
@@ -106,7 +137,8 @@ def cli():
     lines = fetch_organization_pulls(ORGANIZATION)
     if lines:
         text = INITIAL_MESSAGE + '\n'.join(lines)
-        send_to_slack(text)
+        print(text)
+#         send_to_slack(text)
 
 if __name__ == '__main__':
     cli()
