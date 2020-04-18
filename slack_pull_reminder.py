@@ -137,8 +137,7 @@ def cli():
     lines = fetch_organization_pulls(ORGANIZATION)
     if lines:
         text = INITIAL_MESSAGE + '\n'.join(lines)
-        print(text)
-#         send_to_slack(text)
+        send_to_slack(text)
 
 if __name__ == '__main__':
     cli()
